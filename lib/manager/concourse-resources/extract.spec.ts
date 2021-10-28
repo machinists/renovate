@@ -5,7 +5,7 @@ const concourseDefaultPipelineInitValues = loadFixture(
   'default_pipeline_init_pipeline.yaml'
 );
 
-describe('manager/concourse-pipeline/extract', () => {
+describe('manager/concourse-resources/extract', () => {
   describe('extractPackageFile()', () => {
     beforeEach(() => {
       jest.resetAllMocks();

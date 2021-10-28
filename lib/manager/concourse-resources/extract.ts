@@ -1,13 +1,10 @@
+import is from '@sindresorhus/is';
 import { load } from 'js-yaml';
 import { logger } from '../../logger';
 import { id as dockerVersioning } from '../../versioning/docker';
 import { getDep } from '../dockerfile/extract';
 import type { PackageDependency, PackageFile } from '../types';
-import type { ConcourseDockerImageDependency } from './types';
-import {
-  matchesConcoursePipelineDockerHeuristic,
-  matchesConcoursePipelineInlineImage,
-} from './util';
+import type { ConcourseDependency } from './types';
 
 function getConcourseDep({
   registry,
@@ -32,36 +29,30 @@ function getConcourseDep({
  * @param parsedContent
  */
 function findDependencies(
-  parsedContent: Record<string, unknown> | ConcourseDockerImageDependency,
+  parsedContent: Record<string, unknown> | ConcourseDependency,
   packageDependencies: Array<PackageDependency>
 ): Array<PackageDependency> {
   if (!parsedContent || typeof parsedContent !== 'object') {
     return packageDependencies;
   }
 
-  // TODO: Update to only look at resource_types rather than recursive walk
-  // Also, parentKey based logic needs to change to be based on type or whathaveyou
-  Object.keys(parsedContent).forEach((key) => {
-    if (matchesConcoursePipelineDockerHeuristic(key, parsedContent[key])) {
-      const currentItem = parsedContent[key];
+  if (is.string(parsedContent.type) && parsedContent.type === 'docker-image') {
+    const currentItem = parsedContent.source;
 
-      let registry: string = currentItem.registry;
-      registry = registry ? `${registry}/` : '';
-      const repository = String(currentItem.repository);
-      const tag = String(currentItem.tag);
-      packageDependencies.push(getConcourseDep({ repository, tag, registry }));
-    } else if (matchesConcoursePipelineInlineImage(key, parsedContent[key])) {
-      const currentItem = parsedContent[key];
-      packageDependencies.push(getDep(currentItem));
-    } else {
-      findDependencies(parsedContent[key], packageDependencies);
-    }
-  });
+    let registryMirror: string = currentItem.registry_mirror;
+    registryMirror = registryMirror ? `${registryMirror}/` : '';
+    const repository = String(currentItem.repository);
+    const tag = String(currentItem.tag);
+    packageDependencies.push(
+      getConcourseDep({ repository, tag, registryMirror })
+    );
+  }
+
   return packageDependencies;
 }
 
 export function extractPackageFile(content: string): PackageFile {
-  let parsedContent: Record<string, unknown> | ConcourseDockerImageDependency;
+  let parsedContent: Record<string, unknown> | ConcourseDependency;
   try {
     // a parser that allows extracting line numbers would be preferable, with
     // the current approach we need to match anything we find again during the update
