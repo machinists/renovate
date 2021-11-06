@@ -17,3 +17,7 @@ export type ConcourseRegistryImageDependency = {
   repository: string;
   tag: string;
 };
+
+export type ConcoursePipeline = {
+  resource_types: ConcourseDependency[];
+};

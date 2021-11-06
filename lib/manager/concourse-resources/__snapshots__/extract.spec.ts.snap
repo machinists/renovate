@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`manager/concourse-pipeline/extract extractPackageFile() extracts from pipeline.yaml correctly 1`] = `
+exports[`manager/concourse-resources/extract extractPackageFile() extracts from pipeline.yaml correctly 1`] = `
 Object {
   "deps": Array [
     Object {

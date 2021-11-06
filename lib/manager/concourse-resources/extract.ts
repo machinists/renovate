@@ -4,7 +4,10 @@ import { logger } from '../../logger';
 import { id as dockerVersioning } from '../../versioning/docker';
 import { getDep } from '../dockerfile/extract';
 import type { PackageDependency, PackageFile } from '../types';
-import type { ConcourseDependency } from './types';
+import type {
+  ConcourseDockerImageDependency,
+  ConcoursePipeline,
+} from './types';
 
 function getConcourseDep({
   registry,
@@ -23,52 +26,61 @@ function getConcourseDep({
   return dep;
 }
 
-/**
- * Recursively find all supported dependencies in the yaml object.
- *
- * @param parsedContent
- */
-function findDependencies(
-  parsedContent: Record<string, unknown> | ConcourseDependency,
-  packageDependencies: Array<PackageDependency>
-): Array<PackageDependency> {
-  if (!parsedContent || typeof parsedContent !== 'object') {
-    return packageDependencies;
-  }
-
-  if (is.string(parsedContent.type) && parsedContent.type === 'docker-image') {
-    const currentItem = parsedContent.source;
-
-    let registryMirror: string = currentItem.registry_mirror;
-    registryMirror = registryMirror ? `${registryMirror}/` : '';
-    const repository = String(currentItem.repository);
-    const tag = String(currentItem.tag);
-    packageDependencies.push(
-      getConcourseDep({ repository, tag, registryMirror })
-    );
-  }
-
-  return packageDependencies;
-}
-
-export function extractPackageFile(content: string): PackageFile {
-  let parsedContent: Record<string, unknown> | ConcourseDependency;
+export function extractPackageFile(
+  content: string,
+  fileName?: string
+): PackageFile {
+  logger.debug('concourse-resources.extractPackageFile()');
+  const deps: PackageDependency[] = [];
+  let pipeline: ConcoursePipeline;
   try {
-    // a parser that allows extracting line numbers would be preferable, with
-    // the current approach we need to match anything we find again during the update
     // TODO: fix me (#9610)
-    parsedContent = load(content, { json: true }) as any;
+    pipeline = load(content, { json: true }) as ConcoursePipeline;
+    if (!pipeline) {
+      logger.debug(
+        { fileName },
+        'Null config when parsing Concourse Pipeline content'
+      );
+      return null;
+    }
+    if (typeof pipeline !== 'object') {
+      logger.debug(
+        { fileName, type: typeof pipeline },
+        'Unexpected type for Concourse Pipeline content'
+      );
+      return null;
+    }
   } catch (err) {
-    logger.debug({ err }, 'Failed to parse helm-values YAML');
+    logger.debug({ err }, 'err');
+    logger.debug({ fileName }, 'Parsing Concourse Pipeline config YAML');
     return null;
   }
   try {
-    const deps = findDependencies(parsedContent, []);
-    if (deps.length) {
-      return { deps };
-    }
+    // TODO: Handle registry-image type too
+    deps.push(
+      ...Object.values(pipeline.resource_types || {})
+        .filter(
+          (service) =>
+            is.string(service?.type) && service?.type === 'docker-image'
+        )
+        .map((service) => {
+          const dockerImage = service.source as ConcourseDockerImageDependency;
+          let registry: string = dockerImage.registry_mirror;
+          registry = registry ? `${registry}/` : '';
+          const repository = String(dockerImage.repository);
+          const tag = String(dockerImage.tag);
+          return getConcourseDep({ repository, tag, registry });
+        })
+        .filter(Boolean)
+    );
+
+    logger.trace({ deps }, 'Concourse resource type');
+    return { deps };
   } catch (err) /* istanbul ignore next */ {
-    logger.error({ err }, 'Error parsing helm-values parsed content');
+    logger.warn(
+      { fileName, content, err },
+      'Error extracting Concourse Pipeline file'
+    );
   }
   return null;
 }
