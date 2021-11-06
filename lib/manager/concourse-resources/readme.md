@@ -1,16 +1,13 @@
-Renovate supports updating of Docker dependencies within Helm Chart `values.yaml` files or other YAML files that use the same format (via `fileMatch` configuration).
-Updates are performed if the files follow the conventional format used in most of the Helm charts:
+Renovate supports updating of Docker dependencies within Concourse Pipeline (`pipeline.yaml`) files.
+Updates are performed if the file contains the conventional `docker-image` resource types:
 
 ```yaml
-image:
-  repository: 'some-docker/dependency'
-  tag: v1.0.0
-  registry: registry.example.com # optional key, will default to "docker.io"
-
-coreImage:
-  registry: docker.io
-  repository: bitnami/harbor-core
-  tag: 2.1.3-debian-10-r38
+resource_types:
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: teliaoss/github-pr-resource
+      tag: v0.19.1
 ```
 
 If you need to change the versioning format, read the [versioning](https://docs.renovatebot.com/modules/versioning/) documentation to learn more.
