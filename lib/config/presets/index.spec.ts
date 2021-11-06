@@ -337,8 +337,8 @@ describe('config/presets/index', () => {
       ).toEqual({
         packageName: 'some/repo',
         params: undefined,
-        presetName: 'somefile/somepreset',
-        presetPath: undefined,
+        presetName: 'somepreset',
+        presetPath: 'somefile',
         presetSource: 'github',
       });
     });
@@ -350,8 +350,8 @@ describe('config/presets/index', () => {
       ).toEqual({
         packageName: 'some/repo',
         params: undefined,
-        presetName: 'somefile/somepreset/somesubpreset',
-        presetPath: undefined,
+        presetName: 'somesubpreset',
+        presetPath: 'somefile/somepreset',
         presetSource: 'github',
       });
     });
@@ -418,6 +418,15 @@ describe('config/presets/index', () => {
         packageName: 'some/repo',
         params: undefined,
         presetName: 'default',
+        presetPath: undefined,
+        presetSource: 'local',
+      });
+    });
+    it('parses local Bitbucket user repo', () => {
+      expect(presets.parsePreset('local>~john_doe/repo//somefile')).toEqual({
+        packageName: '~john_doe/repo',
+        params: undefined,
+        presetName: 'somefile',
         presetPath: undefined,
         presetSource: 'local',
       });
